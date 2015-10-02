@@ -1,0 +1,32 @@
+{
+  "name": "hmac-authentication",
+  "version": "0.0.0",
+  "description": "Signs and validates HTTP requests based on a shared-secret HMAC signature",
+  "main": "index.js",
+  "scripts": {
+    "test": "gulp test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/18f/hmac-authentication.git"
+  },
+  "keywords": [
+    "HMAC",
+    "authentication"
+  ],
+  "author": "Mike Bland <mbland@acm.org> (https://mike-bland.com/)",
+  "license": "CC0-1.0",
+  "bugs": {
+    "url": "https://github.com/18f/hmac-authentication/issues"
+  },
+  "homepage": "https://github.com/18f/hmac-authentication#readme",
+  "devDependencies": {
+    "chai": "^3.3.0",
+    "gulp": "^3.9.0",
+    "gulp-jshint": "^1.11.2",
+    "gulp-mocha": "^2.1.3",
+    "jshint": "^2.8.0",
+    "mocha": "^2.3.3",
+    "node-mocks-http": "^1.4.4"
+  }
+}
