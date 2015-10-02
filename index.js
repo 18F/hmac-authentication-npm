@@ -30,8 +30,8 @@ exports.resultCodeToString = function(code) {
 function signedHeaders(req, headers) {
   return headers.map(function(header, index) {
     var value = req.get(header);
-    if (!value) { return ''; }
-    return index.toString() + req.get(header);
+    if (typeof value === Array) { value = value.join(','); }
+    return value || '';
   });
 }
 

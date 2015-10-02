@@ -68,52 +68,21 @@ describe('HmacAuthentication', function() {
 
       expect(validator.stringToSign(req, HEADERS)).to.eql(
         ['POST',
-         '0' + payload.length.toString(),
-         '1deadbeef',
-         '2application/json',
-         '32015-09-28',
-         '4trust me',
-         '5mbland',
-         '6mbland@acm.org',
-         '7feedbead',
-         '8foo; bar; baz=quux',
-         '9mbland',
+         payload.length.toString(),
+         'deadbeef',
+         'application/json',
+         '2015-09-28',
+         'trust me',
+         'mbland',
+         'mbland@acm.org',
+         'feedbead',
+         'foo; bar; baz=quux',
+         'mbland',
          '/foo/bar'
         ].join('\n'));
       expect(
         validator.requestSignature(req, payload, 'sha1', HEADERS, 'foobar'))
-        .to.eql('sha1 Z7pb9nRlDgdrWgEG+onLubac+0w=');
-    });
-
-    it('should correctly sign a GET request', function() {
-      var httpOptions = {
-        method: 'GET',
-        url: '/foo/bar',
-        headers: {
-          'Date': '2015-09-29',
-          'Cookie': 'foo; bar; baz=quux',
-          'Gap-Auth': 'mbland'
-        }
-      };
-      var req = httpMocks.createRequest(httpOptions);
-
-      expect(validator.stringToSign(req, HEADERS)).to.eql(
-        ['GET',
-         '',
-         '',
-         '',
-         '32015-09-29',
-         '',
-         '',
-         '',
-         '',
-         '8foo; bar; baz=quux',
-         '9mbland',
-         '/foo/bar'
-        ].join('\n'));
-      expect(
-        validator.requestSignature(req, undefined, 'sha1', HEADERS, 'foobar'))
-        .to.eql('sha1 pehRvdQcu0CxCIN9Ky+a5jasYYw=');
+        .to.eql('sha1 722UbRYfC6MnjtIxqEJMDPrW2mk=');
     });
 
     it('should correctly sign a GET request with a complete URL', function() {
@@ -133,19 +102,52 @@ describe('HmacAuthentication', function() {
          '',
          '',
          '',
-         '32015-09-29',
+         '2015-09-29',
          '',
          '',
          '',
          '',
-         '8foo; bar; baz=quux',
-         '9mbland',
+         'foo; bar; baz=quux',
+         'mbland',
          '/foo/bar?baz=quux#xyzzy'
         ].join('\n'));
       expect(
         validator.requestSignature(req, undefined, 'sha1', HEADERS, 'foobar'))
-        .to.eql('sha1 q5cfavzhqjXieJPAH/fxZHAH3eE=');
+        .to.eql('sha1 gw1nuRYzkocv5q8nQSo3pT5F970=');
     });
+
+    it('should correctly sign a GET w/ multiple values for header', function() {
+      var httpOptions = {
+        method: 'GET',
+        url: '/foo/bar',
+        headers: {
+          'Date': '2015-09-29',
+          'Cookie': ['foo', 'bar', 'baz=quux'],
+          'Gap-Auth': 'mbland'
+        }
+      };
+      var req = httpMocks.createRequest(httpOptions);
+
+      expect(validator.stringToSign(req, HEADERS)).to.eql(
+        ['GET',
+         '',
+         '',
+         '',
+         '2015-09-29',
+         '',
+         '',
+         '',
+         '',
+         'foo,bar,baz=quux',
+         'mbland',
+         '/foo/bar'
+        ].join('\n'));
+      expect(
+        validator.requestSignature(req, undefined, 'sha1', HEADERS, 'foobar'))
+        .to.eql('sha1 VnoxQC+mg2Oils+Cbz1j1c9LXLE=');
+    });
+
+
   });
 
   describe('validateRequest and middlewareValidator', function() {
