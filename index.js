@@ -3,6 +3,7 @@
 'use strict';
 
 var crypto = require('crypto');
+var url = require('url');
 
 var exports = module.exports = {};
 
@@ -35,8 +36,10 @@ function signedHeaders(req, headers) {
 }
 
 exports.stringToSign = function(req, headers) {
+  var parsedUrl = url.parse(req.url);
+  var hashUrl = parsedUrl.path + (parsedUrl.hash || '');
   return [
-    req.method, signedHeaders(req, headers).join('\n'), req.url
+    req.method, signedHeaders(req, headers).join('\n'), hashUrl
   ].join('\n');
 };
 

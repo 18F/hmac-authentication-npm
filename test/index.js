@@ -115,6 +115,37 @@ describe('HmacAuthentication', function() {
         validator.requestSignature(req, undefined, 'sha1', HEADERS, 'foobar'))
         .to.eql('sha1 pehRvdQcu0CxCIN9Ky+a5jasYYw=');
     });
+
+    it('should correctly sign a GET request with a complete URL', function() {
+      var httpOptions = {
+        method: 'GET',
+        url: 'http://localhost/foo/bar?baz=quux#xyzzy',
+        headers: {
+          'Date': '2015-09-29',
+          'Cookie': 'foo; bar; baz=quux',
+          'Gap-Auth': 'mbland'
+        }
+      };
+      var req = httpMocks.createRequest(httpOptions);
+
+      expect(validator.stringToSign(req, HEADERS)).to.eql(
+        ['GET',
+         '',
+         '',
+         '',
+         '32015-09-29',
+         '',
+         '',
+         '',
+         '',
+         '8foo; bar; baz=quux',
+         '9mbland',
+         '/foo/bar?baz=quux#xyzzy'
+        ].join('\n'));
+      expect(
+        validator.requestSignature(req, undefined, 'sha1', HEADERS, 'foobar'))
+        .to.eql('sha1 q5cfavzhqjXieJPAH/fxZHAH3eE=');
+    });
   });
 
   describe('validateRequest and middlewareValidator', function() {
