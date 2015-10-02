@@ -27,7 +27,11 @@ exports.resultCodeToString = function(code) {
 };
 
 function signedHeaders(req, headers) {
-  return headers.map(function(header) { return req.get(header) || ''; });
+  return headers.map(function(header, index) {
+    var value = req.get(header);
+    if (!value) { return ''; }
+    return index.toString() + req.get(header);
+  });
 }
 
 exports.stringToSign = function(req, headers) {

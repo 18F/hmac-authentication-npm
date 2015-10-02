@@ -68,21 +68,21 @@ describe('HmacAuthentication', function() {
 
       expect(validator.stringToSign(req, HEADERS)).to.eql(
         ['POST',
-         payload.length.toString(),
-         'deadbeef',
-         'application/json',
-         '2015-09-28',
-         'trust me',
-         'mbland',
-         'mbland@acm.org',
-         'feedbead',
-         'foo; bar; baz=quux',
-         'mbland',
+         '0' + payload.length.toString(),
+         '1deadbeef',
+         '2application/json',
+         '32015-09-28',
+         '4trust me',
+         '5mbland',
+         '6mbland@acm.org',
+         '7feedbead',
+         '8foo; bar; baz=quux',
+         '9mbland',
          '/foo/bar'
         ].join('\n'));
       expect(
         validator.requestSignature(req, payload, 'sha1', HEADERS, 'foobar'))
-        .to.eql('sha1 722UbRYfC6MnjtIxqEJMDPrW2mk=');
+        .to.eql('sha1 Z7pb9nRlDgdrWgEG+onLubac+0w=');
     });
 
     it('should correctly sign a GET request', function() {
@@ -102,18 +102,18 @@ describe('HmacAuthentication', function() {
          '',
          '',
          '',
-         '2015-09-29',
+         '32015-09-29',
          '',
          '',
          '',
          '',
-         'foo; bar; baz=quux',
-         'mbland',
+         '8foo; bar; baz=quux',
+         '9mbland',
          '/foo/bar'
         ].join('\n'));
       expect(
         validator.requestSignature(req, undefined, 'sha1', HEADERS, 'foobar'))
-        .to.eql('sha1 JBQJcmSTteQyHZXFUA9glis9BIk=');
+        .to.eql('sha1 pehRvdQcu0CxCIN9Ky+a5jasYYw=');
     });
   });
 
