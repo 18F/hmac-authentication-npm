@@ -1,6 +1,6 @@
 {
   "name": "hmac-authentication",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Signs and validates HTTP requests based on a shared-secret HMAC signature",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/18f/hmac-authentication.git"
+    "url": "git+https://github.com/18f/hmac-authentication-npm.git"
   },
   "keywords": [
     "HMAC",
