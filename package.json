@@ -17,9 +17,9 @@
   "author": "Mike Bland <mbland@acm.org> (https://mike-bland.com/)",
   "license": "CC0-1.0",
   "bugs": {
-    "url": "https://github.com/18f/hmac-authentication/issues"
+    "url": "https://github.com/18f/hmac-authentication-npm/issues"
   },
-  "homepage": "https://github.com/18f/hmac-authentication#readme",
+  "homepage": "https://github.com/18f/hmac-authentication-npm#readme",
   "devDependencies": {
     "chai": "^3.3.0",
     "gulp": "^3.9.0",

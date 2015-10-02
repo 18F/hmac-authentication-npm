@@ -1,4 +1,4 @@
-# hmac-authentication
+# hmac-authentication npm
 
 Signs and validates HTTP requests based on a shared-secret HMAC signature.
 

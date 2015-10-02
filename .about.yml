@@ -87,7 +87,7 @@ licenses:
 # - url: URL for the link
 #   text: Anchor text for the link
 links:
-- url: https://www.npmjs.com/package/hmac-authentication
+- url: https://www.npmjs.com/package/hmac-authentication-npm
   text: hmac-authentication npm
 
 # Email addresses of points-of-contact
