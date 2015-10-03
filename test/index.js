@@ -168,7 +168,8 @@ describe('HmacAuthentication', function() {
     };
 
     var validateRequest = function(request, secretKey) {
-      var validate = validator.middlewareValidator(HEADERS, secretKey);
+      var validate = validator.middlewareValidator(
+        'Gap-Signature', HEADERS, secretKey);
       validate(request, undefined, new Buffer(0), 'utf-8');
     };
 
@@ -215,7 +216,7 @@ describe('HmacAuthentication', function() {
       // If we reach this point the result was a MATCH. Call
       // validator.validateRequest() directly so we can inspect the values.
       var results = validator.validateRequest(
-        request, undefined, HEADERS, 'foobar');
+        request, undefined, 'Gap-Signature', HEADERS, 'foobar');
       var result = results[0];
       var header = results[1];
       var computed = results[2];

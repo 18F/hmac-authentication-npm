@@ -11,8 +11,9 @@ $ npm install hmac-authentication --save
 ## Validating incoming requests
 
 Assuming you're using [Express](https://www.npmjs.com/package/express), during
-initialization of your application, where `config.headers` is a list of
-headers factored into the signature and `config.secretKey` is the shared
+initialization of your application, where `config.signatureHeader` identifies
+the header containing the message signature, `config.headers` is a list of
+headers factored into the signature, and `config.secretKey` is the shared
 secret between your application and the service making the request:
 
 ```js
@@ -23,7 +24,7 @@ var hmacAuthentication = require('hmac-authentication');
 function doLaunch(config) {
   var middlewareOptions = {
     verify: hmacAuthentication.middlewareValidator(
-      config.headers, config.secretKey)
+      config.signatureHeader, config.headers, config.secretKey)
   };
   var server = express();
   server.use(bodyParser.raw(middlewareOptions));

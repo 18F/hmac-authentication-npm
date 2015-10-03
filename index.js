@@ -28,7 +28,7 @@ exports.resultCodeToString = function(code) {
 };
 
 function signedHeaders(req, headers) {
-  return headers.map(function(header, index) {
+  return headers.map(function(header) {
     var value = req.get(header);
     if (typeof value === Array) { value = value.join(','); }
     return value || '';
@@ -51,8 +51,9 @@ exports.requestSignature = function(
   return digestName + ' ' + hmac.digest('base64');
 };
 
-exports.validateRequest = function(req, rawBody, headers, secretKey) {
-  var header = req.get('Gap-Signature');
+exports.validateRequest = function(req, rawBody, signatureHeader, headers,
+  secretKey) {
+  var header = req.get(signatureHeader);
   if (!header) { return [exports.NO_SIGNATURE]; }
   var components = header.split(' ');
   if (components.length != 2) { return [exports.INVALID_FORMAT, header]; }
@@ -68,12 +69,13 @@ exports.validateRequest = function(req, rawBody, headers, secretKey) {
   return [result, header, computed];
 };
 
-function ValidationError(result, header, computed) {
+function ValidationError(signatureHeader, result, header, computed) {
   this.name = 'ValidationError';
+  this.signatureHeader = signatureHeader;
   this.result = result;
   this.header = header;
   this.computed = computed;
-  this.message = 'hmac signature request validation failed: ' +
+  this.message = signatureHeader + ' validation failed: ' +
     exports.resultCodeToString(result);
   if (header) { this.message += ' header: "' + header + '"'; }
   if (computed) { this.message += ' computed: "' + computed + '"'; }
@@ -83,17 +85,17 @@ ValidationError.prototype = Object.create(Error.prototype);
 ValidationError.prototype.constructor = ValidationError;
 exports.ValidationError = ValidationError;
 
-exports.middlewareValidator = function(headers, secretKey) {
+exports.middlewareValidator = function(signatureHeader, headers, secretKey) {
   return function(req, res, buf, encoding) {
     var rawBody = buf.toString(encoding);
     var validationResult = exports.validateRequest(
-      req, rawBody, headers, secretKey);
+      req, rawBody, signatureHeader, headers, secretKey);
     var result = validationResult[0];
 
     if (result != exports.MATCH) {
       var header = validationResult[1];
       var computed = validationResult[2];
-      throw new ValidationError(result, header, computed);
+      throw new ValidationError(signatureHeader, result, header, computed);
     }
   };
 };
