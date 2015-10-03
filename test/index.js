@@ -25,7 +25,36 @@ describe('HmacAuthentication', function() {
     'Gap-Auth'
   ];
 
-  var auth = new HmacAuth('sha1', 'foobar', 'GAP-Signature', HEADERS);
+  var auth = new HmacAuth('SHA1', 'foobar', 'GAP-Signature', HEADERS);
+
+  describe('HmacAuth constructor', function() {
+    it('should lowercase the hash function and all header names', function() {
+      expect(auth.digestName).to.eql('sha1');
+      expect(auth.key).to.eql('foobar');
+      expect(auth.signatureHeader).to.eql('gap-signature');
+      expect(auth.headers).to.eql([
+        'content-length',
+        'content-md5',
+        'content-type',
+        'date',
+        'authorization',
+        'x-forwarded-user',
+        'x-forwarded-email',
+        'x-forwarded-access-token',
+        'cookie',
+        'gap-auth'
+      ]);
+    });
+
+    it('should throw if the hash function is not supported', function() {
+      var bogusAuth;
+      var f = function() {
+        bogusAuth = new HmacAuth('bogus', 'foobar', 'GAP-Signature', HEADERS);
+      };
+      expect(f).to.throw(
+        Error, 'HMAC authentication digest is not supported: bogus');
+    });
+  });
 
   describe('resultCodeToString', function() {
     it('should return undefined for out-of-range values', function() {

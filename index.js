@@ -5,11 +5,18 @@
 var crypto = require('crypto');
 var url = require('url');
 
-var exports = module.exports = HmacAuth;
+module.exports = HmacAuth;
 HmacAuth.ValidationError = ValidationError;
 
 function HmacAuth(digestName, key, signatureHeader, headers) {
-  this.digestName = digestName;
+  this.digestName = digestName.toLowerCase();
+  try {
+    crypto.createHash(digestName);
+  } catch (_) {
+    throw new Error(
+      'HMAC authentication digest is not supported: ' + digestName);
+  }
+
   this.key = key;
   this.signatureHeader = signatureHeader.toLowerCase();
   this.headers = headers.map(function(h) { return h.toLowerCase(); });
