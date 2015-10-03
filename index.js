@@ -29,7 +29,6 @@ HmacAuth.MATCH = 4;
 HmacAuth.MISMATCH = 5;
 
 var resultStrings = [
-  '',
   'NO_SIGNATURE',
   'INVALID_FORMAT',
   'UNSUPPORTED_ALGORITHM',
@@ -38,8 +37,7 @@ var resultStrings = [
 ];
 
 HmacAuth.resultCodeToString = function(code) {
-  if (code < 1 || code >= resultStrings.length) { return; }
-  return resultStrings[code];
+  return resultStrings[code - 1];
 };
 
 function signedHeaders(req, headers) {
