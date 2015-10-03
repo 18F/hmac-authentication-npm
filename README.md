@@ -2,6 +2,10 @@
 
 Signs and validates HTTP requests based on a shared-secret HMAC signature.
 
+Developed in parallel with the following packages for other languages:
+- Go: [github.com/18F/hmacauth](https://github.com/18F/hmacauth/)
+- Ruby: [hmac_authentication](https://rubygems.org/gems/hmac_authentication)
+
 ## Installation
 
 ```sh
@@ -58,7 +62,7 @@ function requestHandler(req, rawBody) {
 
 ## Signing outgoing requests
 
-Do something similar to the following. `rawBody`must be a string.
+Do something similar to the following. `rawBody` must be a string.
 
 ```js
 var HmacAuth = require('hmac-authentication');
