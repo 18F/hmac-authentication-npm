@@ -251,18 +251,17 @@ describe('HmacAuthentication', function() {
 
     it('should throw ValidationError with MISMATCH', function() {
       var request = createRequest();
-      var foobarSignature = auth.requestSignature(request, null);
       var barbazAuth = new HmacAuth('sha1', 'barbaz', 'Gap-Signature', HEADERS);
-      var barbazSignature = barbazAuth.requestSignature(request, null);
 
       var f = function() {
-        validateRequest(createRequest(foobarSignature), 'barbaz');
+        auth.signRequest(request);
+        validateRequest(request, 'barbaz');
       };
       expect(f).to.throw(
         HmacAuth.ValidationError,
         'failed: MISMATCH ' +
-        'header: "' + foobarSignature + '" ' +
-        'computed: "' + barbazSignature + '"');
+        'header: "' + auth.requestSignature(request, null) + '" ' +
+        'computed: "' + barbazAuth.requestSignature(request, null) + '"');
     });
   });
 });
