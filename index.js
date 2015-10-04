@@ -2,6 +2,7 @@
 
 'use strict';
 
+var bufferEq = require('buffer-equal-constant-time');
 var crypto = require('crypto');
 var url = require('url');
 
@@ -75,6 +76,14 @@ HmacAuth.prototype.signatureFromHeader = function(req) {
   return req.headers[this.signatureHeader];
 };
 
+// Replace bufferEq() once https://github.com/nodejs/node/issues/3043 is
+// resolved and the standard library implementation is available.
+function compareSignatures(lhs, rhs) {
+  var lbuf = new Buffer(lhs);
+  var rbuf = new Buffer(rhs);
+  return bufferEq(lbuf, rbuf) ? HmacAuth.MATCH : HmacAuth.MISMATCH;
+}
+
 HmacAuth.prototype.validateRequest = function(req, rawBody) {
   var header = this.signatureFromHeader(req);
   if (!header) { return [HmacAuth.NO_SIGNATURE]; }
@@ -87,8 +96,7 @@ HmacAuth.prototype.validateRequest = function(req, rawBody) {
     return [HmacAuth.UNSUPPORTED_ALGORITHM, header];
   }
   var computed = requestSignature(this, req, rawBody, digestName);
-  var result = (header == computed) ? HmacAuth.MATCH : HmacAuth.MISMATCH;
-  return [result, header, computed];
+  return [compareSignatures(header, computed), header, computed];
 };
 
 function ValidationError(signatureHeader, result, header, computed) {
