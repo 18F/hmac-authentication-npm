@@ -54,7 +54,7 @@ HmacAuth.prototype.stringToSign = function(req) {
   var hashUrl = parsedUrl.path + (parsedUrl.hash || '');
   return [
     req.method, signedHeaders(req, this.headers).join('\n'), hashUrl
-  ].join('\n');
+  ].join('\n') + '\n';
 };
 
 HmacAuth.prototype.signRequest = function(req, rawBody) {

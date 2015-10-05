@@ -110,15 +110,15 @@ describe('HmacAuthentication', function() {
          'foo; bar; baz=quux',
          'mbland',
          '/foo/bar'
-        ].join('\n'));
+        ].join('\n') + '\n');
       expect(auth.requestSignature(req, payload))
-        .to.eql('sha1 722UbRYfC6MnjtIxqEJMDPrW2mk=');
+        .to.eql('sha1 K4IrVDtMCRwwW8Oms0VyZWMjXHI=');
     });
 
     it('should correctly sign a GET request with a complete URL', function() {
       var httpOptions = {
         method: 'GET',
-        url: 'http://localhost/foo/bar?baz=quux#xyzzy',
+        url: 'http://localhost/foo/bar?baz=quux%2Fxyzzy#plugh',
         headers: {
           'Date': '2015-09-29',
           'Cookie': 'foo; bar; baz=quux',
@@ -139,10 +139,10 @@ describe('HmacAuthentication', function() {
          '',
          'foo; bar; baz=quux',
          'mbland',
-         '/foo/bar?baz=quux#xyzzy'
-        ].join('\n'));
+         '/foo/bar?baz=quux%2Fxyzzy#plugh'
+        ].join('\n') + '\n');
       expect(auth.requestSignature(req, undefined))
-        .to.eql('sha1 gw1nuRYzkocv5q8nQSo3pT5F970=');
+        .to.eql('sha1 ih5Jce9nsltry63rR4ImNz2hdnk=');
     });
 
     it('should correctly sign a GET w/ multiple values for header', function() {
@@ -170,9 +170,9 @@ describe('HmacAuthentication', function() {
          'foo,bar,baz=quux',
          'mbland',
          '/foo/bar'
-        ].join('\n'));
+        ].join('\n') + '\n');
       expect(auth.requestSignature(req, undefined))
-        .to.eql('sha1 VnoxQC+mg2Oils+Cbz1j1c9LXLE=');
+        .to.eql('sha1 JlRkes1X+qq3Bgc/GcRyLos+4aI=');
     });
   });
 
