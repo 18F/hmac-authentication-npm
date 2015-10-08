@@ -44,7 +44,7 @@ HmacAuth.resultCodeToString = function(code) {
 function signedHeaders(req, headers) {
   return headers.map(function(header) {
     var value = req.headers[header];
-    if (typeof value === Array) { value = value.join(','); }
+    if (Array.isArray(value)) { value = value.join(','); }
     return value || '';
   });
 }
@@ -88,7 +88,7 @@ HmacAuth.prototype.validateRequest = function(req, rawBody) {
   var header = this.signatureFromHeader(req);
   if (!header) { return [HmacAuth.NO_SIGNATURE]; }
   var components = header.split(' ');
-  if (components.length != 2) { return [HmacAuth.INVALID_FORMAT, header]; }
+  if (components.length !== 2) { return [HmacAuth.INVALID_FORMAT, header]; }
   var digestName = components[0];
   try {
     crypto.createHash(digestName); 
