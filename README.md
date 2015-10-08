@@ -2,6 +2,10 @@
 
 Signs and validates HTTP requests based on a shared-secret HMAC signature.
 
+Developed in parallel with the following packages for other languages:
+- Go: [github.com/18F/hmacauth](https://github.com/18F/hmacauth/)
+- Ruby: [hmac_authentication](https://rubygems.org/gems/hmac_authentication)
+
 ## Installation
 
 ```sh
@@ -11,19 +15,21 @@ $ npm install hmac-authentication --save
 ## Validating incoming requests
 
 Assuming you're using [Express](https://www.npmjs.com/package/express), during
-initialization of your application, where `config.headers` is a list of
-headers factored into the signature and `config.secretKey` is the shared
+initialization of your application, where `config.signatureHeader` identifies
+the header containing the message signature, `config.headers` is a list of
+headers factored into the signature, and `config.secretKey` is the shared
 secret between your application and the service making the request:
 
 ```js
 var express = require('express');
 var bodyParser = require('bodyParser');
-var hmacAuthentication = require('hmac-authentication');
+var HmacAuth = require('hmac-authentication');
+var config = require('./config.json');
 
 function doLaunch(config) {
   var middlewareOptions = {
-    verify: hmacAuthentication.middlewareValidator(
-      config.headers, config.secretKey)
+    verify: HmacAuth.middlewareValidator(
+      config.secretKey, config.signatureHeader, config.headers)
   };
   var server = express();
   server.use(bodyParser.raw(middlewareOptions));
@@ -32,14 +38,44 @@ function doLaunch(config) {
 }
 ```
 
-If you're not using Express, you can use the function `validateRequest(req,
-rawBody, headers, secretKey)` directly, where `rawBody` has already been
-converted to a string.
+If you're not using Express, you can use something similar to the following:
+
+```js
+var HmacAuth = require('hmac-authentication');
+var config = require('./config.json');
+
+// When only used for validation, it doesn't matter what the first argument
+// is, because the hash algorithm used for validation will be parsed from the
+// incoming request signature header.
+var auth = new HmacAuth(
+  'sha1', config.secretKey, config.signatureHeader, config.headers);
+
+// rawBody must be a string.
+function requestHandler(req, rawBody) {
+  var validationResult = auth.validateRequest(req, rawBody);
+
+  if (validationResult[0] != HmacAuth.MATCH) {
+    // Handle authentication failure...
+  }
+}
+```
 
 ## Signing outgoing requests
 
-Call `requestSignature(request, rawBody, digestName, headers, secretKey)` to
-sign a request before sending. `rawBody` and `digestName` must be strings.
+Do something similar to the following. `rawBody` must be a string.
+
+```js
+var HmacAuth = require('hmac-authentication');
+var config = require('./config.json');
+
+var auth = new HmacAuth(
+  config.digestName, config.secretKey, config.signatureHeader, config.headers);
+
+function makeRequest(req, rawBody) {
+  // Prepare request...
+  auth.signRequest(req, rawBody);
+}
+```
 
 ## Public domain
 

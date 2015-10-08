@@ -5,7 +5,7 @@
 
 var chai = require('chai');
 var httpMocks = require('node-mocks-http');
-var validator = require('../index');
+var HmacAuth = require('../index');
 
 var expect = chai.expect;
 chai.should();
@@ -25,22 +25,53 @@ describe('HmacAuthentication', function() {
     'Gap-Auth'
   ];
 
+  var auth = new HmacAuth('SHA1', 'foobar', 'GAP-Signature', HEADERS);
+
+  describe('HmacAuth constructor', function() {
+    it('should lowercase the hash function and all header names', function() {
+      expect(auth.digestName).to.eql('sha1');
+      expect(auth.key).to.eql('foobar');
+      expect(auth.signatureHeader).to.eql('gap-signature');
+      expect(auth.headers).to.eql([
+        'content-length',
+        'content-md5',
+        'content-type',
+        'date',
+        'authorization',
+        'x-forwarded-user',
+        'x-forwarded-email',
+        'x-forwarded-access-token',
+        'cookie',
+        'gap-auth'
+      ]);
+    });
+
+    it('should throw if the hash function is not supported', function() {
+      var bogusAuth;
+      var f = function() {
+        bogusAuth = new HmacAuth('bogus', 'foobar', 'GAP-Signature', HEADERS);
+      };
+      expect(f).to.throw(
+        Error, 'HMAC authentication digest is not supported: bogus');
+    });
+  });
+
   describe('resultCodeToString', function() {
     it('should return undefined for out-of-range values', function() {
-      expect(validator.resultCodeToString(0)).to.be.undefined;
-      expect(validator.resultCodeToString(6)).to.be.undefined;
+      expect(HmacAuth.resultCodeToString(0)).to.be.undefined;
+      expect(HmacAuth.resultCodeToString(6)).to.be.undefined;
     });
 
     it('should return the correct matching strings', function() {
-      expect(validator.resultCodeToString(validator.NO_SIGNATURE))
+      expect(HmacAuth.resultCodeToString(HmacAuth.NO_SIGNATURE))
         .to.eql('NO_SIGNATURE');
-      expect(validator.resultCodeToString(validator.INVALID_FORMAT))
+      expect(HmacAuth.resultCodeToString(HmacAuth.INVALID_FORMAT))
         .to.eql('INVALID_FORMAT');
-      expect(validator.resultCodeToString(validator.UNSUPPORTED_ALGORITHM))
+      expect(HmacAuth.resultCodeToString(HmacAuth.UNSUPPORTED_ALGORITHM))
         .to.eql('UNSUPPORTED_ALGORITHM');
-      expect(validator.resultCodeToString(validator.MATCH))
+      expect(HmacAuth.resultCodeToString(HmacAuth.MATCH))
         .to.eql('MATCH');
-      expect(validator.resultCodeToString(validator.MISMATCH))
+      expect(HmacAuth.resultCodeToString(HmacAuth.MISMATCH))
         .to.eql('MISMATCH');
     });
   });
@@ -66,7 +97,7 @@ describe('HmacAuthentication', function() {
       };
       var req = httpMocks.createRequest(httpOptions);
 
-      expect(validator.stringToSign(req, HEADERS)).to.eql(
+      expect(auth.stringToSign(req)).to.eql(
         ['POST',
          payload.length.toString(),
          'deadbeef',
@@ -79,16 +110,15 @@ describe('HmacAuthentication', function() {
          'foo; bar; baz=quux',
          'mbland',
          '/foo/bar'
-        ].join('\n'));
-      expect(
-        validator.requestSignature(req, payload, 'sha1', HEADERS, 'foobar'))
-        .to.eql('sha1 722UbRYfC6MnjtIxqEJMDPrW2mk=');
+        ].join('\n') + '\n');
+      expect(auth.requestSignature(req, payload))
+        .to.eql('sha1 K4IrVDtMCRwwW8Oms0VyZWMjXHI=');
     });
 
-    it('should correctly sign a GET request', function() {
+    it('should correctly sign a GET request with a complete URL', function() {
       var httpOptions = {
         method: 'GET',
-        url: '/foo/bar',
+        url: 'http://localhost/foo/bar?baz=quux%2Fxyzzy#plugh',
         headers: {
           'Date': '2015-09-29',
           'Cookie': 'foo; bar; baz=quux',
@@ -97,7 +127,7 @@ describe('HmacAuthentication', function() {
       };
       var req = httpMocks.createRequest(httpOptions);
 
-      expect(validator.stringToSign(req, HEADERS)).to.eql(
+      expect(auth.stringToSign(req)).to.eql(
         ['GET',
          '',
          '',
@@ -109,11 +139,40 @@ describe('HmacAuthentication', function() {
          '',
          'foo; bar; baz=quux',
          'mbland',
+         '/foo/bar?baz=quux%2Fxyzzy#plugh'
+        ].join('\n') + '\n');
+      expect(auth.requestSignature(req, undefined))
+        .to.eql('sha1 ih5Jce9nsltry63rR4ImNz2hdnk=');
+    });
+
+    it('should correctly sign a GET w/ multiple values for header', function() {
+      var httpOptions = {
+        method: 'GET',
+        url: '/foo/bar',
+        headers: {
+          'Date': '2015-09-29',
+          'Cookie': ['foo', 'bar', 'baz=quux'],
+          'Gap-Auth': 'mbland'
+        }
+      };
+      var req = httpMocks.createRequest(httpOptions);
+
+      expect(auth.stringToSign(req)).to.eql(
+        ['GET',
+         '',
+         '',
+         '',
+         '2015-09-29',
+         '',
+         '',
+         '',
+         '',
+         'foo,bar,baz=quux',
+         'mbland',
          '/foo/bar'
-        ].join('\n'));
-      expect(
-        validator.requestSignature(req, undefined, 'sha1', HEADERS, 'foobar'))
-        .to.eql('sha1 JBQJcmSTteQyHZXFUA9glis9BIk=');
+        ].join('\n') + '\n');
+      expect(auth.requestSignature(req, undefined))
+        .to.eql('sha1 JlRkes1X+qq3Bgc/GcRyLos+4aI=');
     });
   });
 
@@ -135,13 +194,14 @@ describe('HmacAuthentication', function() {
     };
 
     var validateRequest = function(request, secretKey) {
-      var validate = validator.middlewareValidator(HEADERS, secretKey);
+      var validate = HmacAuth.middlewareValidator(
+        secretKey, 'Gap-Signature', HEADERS);
       validate(request, undefined, new Buffer(0), 'utf-8');
     };
 
     it('should throw ValidationError with NO_SIGNATURE', function() {
       var f = function() { validateRequest(createRequest(), 'foobar'); };
-      expect(f).to.throw(validator.ValidationError, 'failed: NO_SIGNATURE');
+      expect(f).to.throw(HmacAuth.ValidationError, 'failed: NO_SIGNATURE');
     });
 
     it('should throw ValidationError with INVALID_FORMAT', function() {
@@ -151,14 +211,13 @@ describe('HmacAuthentication', function() {
         validateRequest(request, 'foobar');
       };
       expect(f).to.throw(
-        validator.ValidationError,
+        HmacAuth.ValidationError,
         'failed: INVALID_FORMAT header: "' + badValue + '"');
     });
 
     it('should throw ValidationError with UNSUPPORTED_ALGORITHM', function() {
       var request = createRequest();
-      var validSignature = validator.requestSignature(
-        request, null, 'sha1', HEADERS, 'foobar');
+      var validSignature = auth.requestSignature(request, null);
       var components = validSignature.split(' ');
       var signatureWithUnsupportedAlgorithm = 'unsupported ' + components[1];
 
@@ -167,46 +226,42 @@ describe('HmacAuthentication', function() {
           createRequest(signatureWithUnsupportedAlgorithm), 'foobar');
       };
       expect(f).to.throw(
-        validator.ValidationError,
+        HmacAuth.ValidationError,
         'failed: UNSUPPORTED_ALGORITHM ' +
         'header: "' + signatureWithUnsupportedAlgorithm + '"');
     });
 
     it('should validate the request with MATCH', function() {
       var request = createRequest();
-      var expectedSignature = validator.requestSignature(
-        request, null, 'sha1', HEADERS, 'foobar');
-      request = createRequest(expectedSignature);
+      var expectedSignature = auth.requestSignature(request, null);
+      auth.signRequest(request);
       validateRequest(request, 'foobar');
 
       // If we reach this point the result was a MATCH. Call
-      // validator.validateRequest() directly so we can inspect the values.
-      var results = validator.validateRequest(
-        request, undefined, HEADERS, 'foobar');
+      // auth.validateRequest() directly so we can inspect the values.
+      var results = auth.validateRequest(request, undefined);
       var result = results[0];
       var header = results[1];
       var computed = results[2];
 
-      expect(result).to.eql(validator.MATCH);
+      expect(result).to.eql(HmacAuth.MATCH);
       expect(header).to.eql(expectedSignature);
       expect(computed).to.eql(expectedSignature);
     });
 
     it('should throw ValidationError with MISMATCH', function() {
       var request = createRequest();
-      var foobarSignature = validator.requestSignature(
-        request, null, 'sha1', HEADERS, 'foobar');
-      var barbazSignature = validator.requestSignature(
-        request, null, 'sha1', HEADERS, 'barbaz');
+      var barbazAuth = new HmacAuth('sha1', 'barbaz', 'Gap-Signature', HEADERS);
 
       var f = function() {
-        validateRequest(createRequest(foobarSignature), 'barbaz');
+        auth.signRequest(request);
+        validateRequest(request, 'barbaz');
       };
       expect(f).to.throw(
-        validator.ValidationError,
+        HmacAuth.ValidationError,
         'failed: MISMATCH ' +
-        'header: "' + foobarSignature + '" ' +
-        'computed: "' + barbazSignature + '"');
+        'header: "' + auth.requestSignature(request, null) + '" ' +
+        'computed: "' + barbazAuth.requestSignature(request, null) + '"');
     });
   });
 });

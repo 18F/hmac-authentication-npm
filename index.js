@@ -2,18 +2,34 @@
 
 'use strict';
 
+var bufferEq = require('buffer-equal-constant-time');
 var crypto = require('crypto');
+var url = require('url');
 
-var exports = module.exports = {};
+module.exports = HmacAuth;
+HmacAuth.ValidationError = ValidationError;
 
-exports.NO_SIGNATURE = 1;
-exports.INVALID_FORMAT = 2;
-exports.UNSUPPORTED_ALGORITHM = 3;
-exports.MATCH = 4;
-exports.MISMATCH = 5;
+function HmacAuth(digestName, key, signatureHeader, headers) {
+  this.digestName = digestName.toLowerCase();
+  try {
+    crypto.createHash(digestName);
+  } catch (_) {
+    throw new Error(
+      'HMAC authentication digest is not supported: ' + digestName);
+  }
+
+  this.key = key;
+  this.signatureHeader = signatureHeader.toLowerCase();
+  this.headers = headers.map(function(h) { return h.toLowerCase(); });
+}
+
+HmacAuth.NO_SIGNATURE = 1;
+HmacAuth.INVALID_FORMAT = 2;
+HmacAuth.UNSUPPORTED_ALGORITHM = 3;
+HmacAuth.MATCH = 4;
+HmacAuth.MISMATCH = 5;
 
 var resultStrings = [
-  '',
   'NO_SIGNATURE',
   'INVALID_FORMAT',
   'UNSUPPORTED_ALGORITHM',
@@ -21,72 +37,98 @@ var resultStrings = [
   'MISMATCH'
 ];
 
-exports.resultCodeToString = function(code) {
-  if (code < 1 || code >= resultStrings.length) { return; }
-  return resultStrings[code];
+HmacAuth.resultCodeToString = function(code) {
+  return resultStrings[code - 1];
 };
 
 function signedHeaders(req, headers) {
-  return headers.map(function(header) { return req.get(header) || ''; });
+  return headers.map(function(header) {
+    var value = req.headers[header];
+    if (Array.isArray(value)) { value = value.join(','); }
+    return value || '';
+  });
 }
 
-exports.stringToSign = function(req, headers) {
+HmacAuth.prototype.stringToSign = function(req) {
+  var parsedUrl = url.parse(req.url);
+  var hashUrl = parsedUrl.path + (parsedUrl.hash || '');
   return [
-    req.method, signedHeaders(req, headers).join('\n'), req.url
-  ].join('\n');
+    req.method, signedHeaders(req, this.headers).join('\n'), hashUrl
+  ].join('\n') + '\n';
 };
 
-exports.requestSignature = function(
-  req, rawBody, digestName, headers, secretKey) {
-  var hmac = crypto.createHmac(digestName, secretKey);
-  hmac.update(exports.stringToSign(req, headers));
+HmacAuth.prototype.signRequest = function(req, rawBody) {
+  req.headers[this.signatureHeader] = this.requestSignature(req, rawBody);
+};
+
+HmacAuth.prototype.requestSignature = function(req, rawBody) {
+  return requestSignature(this, req, rawBody, this.digestName);
+};
+
+function requestSignature(auth, req, rawBody, digestName) {
+  var hmac = crypto.createHmac(digestName, auth.key);
+  hmac.update(auth.stringToSign(req));
   hmac.update(rawBody || '');
   return digestName + ' ' + hmac.digest('base64');
+}
+
+HmacAuth.prototype.signatureFromHeader = function(req) {
+  return req.headers[this.signatureHeader];
 };
 
-exports.validateRequest = function(req, rawBody, headers, secretKey) {
-  var header = req.get('Gap-Signature');
-  if (!header) { return [exports.NO_SIGNATURE]; }
+// Replace bufferEq() once https://github.com/nodejs/node/issues/3043 is
+// resolved and the standard library implementation is available.
+function compareSignatures(lhs, rhs) {
+  var lbuf = new Buffer(lhs);
+  var rbuf = new Buffer(rhs);
+  return bufferEq(lbuf, rbuf) ? HmacAuth.MATCH : HmacAuth.MISMATCH;
+}
+
+HmacAuth.prototype.validateRequest = function(req, rawBody) {
+  var header = this.signatureFromHeader(req);
+  if (!header) { return [HmacAuth.NO_SIGNATURE]; }
   var components = header.split(' ');
-  if (components.length != 2) { return [exports.INVALID_FORMAT, header]; }
+  if (components.length !== 2) { return [HmacAuth.INVALID_FORMAT, header]; }
   var digestName = components[0];
   try {
     crypto.createHash(digestName); 
   } catch (e) {
-    return [exports.UNSUPPORTED_ALGORITHM, header];
+    return [HmacAuth.UNSUPPORTED_ALGORITHM, header];
   }
-  var computed = exports.requestSignature(
-    req, rawBody, digestName, headers, secretKey);
-  var result = (header == computed) ? exports.MATCH : exports.MISMATCH;
-  return [result, header, computed];
+  var computed = requestSignature(this, req, rawBody, digestName);
+  return [compareSignatures(header, computed), header, computed];
 };
 
-function ValidationError(result, header, computed) {
+function ValidationError(signatureHeader, result, header, computed) {
   this.name = 'ValidationError';
+  this.signatureHeader = signatureHeader;
   this.result = result;
   this.header = header;
   this.computed = computed;
-  this.message = 'hmac signature request validation failed: ' +
-    exports.resultCodeToString(result);
+  this.message = signatureHeader + ' validation failed: ' +
+    HmacAuth.resultCodeToString(result);
   if (header) { this.message += ' header: "' + header + '"'; }
   if (computed) { this.message += ' computed: "' + computed + '"'; }
   this.stack = (new Error()).stack;
 }
 ValidationError.prototype = Object.create(Error.prototype);
 ValidationError.prototype.constructor = ValidationError;
-exports.ValidationError = ValidationError;
 
-exports.middlewareValidator = function(headers, secretKey) {
+HmacAuth.middlewareValidator = function(secretKey, signatureHeader, headers) {
+  // Since the object is only used for validation, the digestName can be
+  // anything valid. The actual digest function used during validation depends
+  // on the digest name used as a prefix to the signature header.
+  var auth = new HmacAuth('sha1', secretKey, signatureHeader, headers);
+
   return function(req, res, buf, encoding) {
     var rawBody = buf.toString(encoding);
-    var validationResult = exports.validateRequest(
-      req, rawBody, headers, secretKey);
+    var validationResult = auth.validateRequest(req, rawBody);
     var result = validationResult[0];
 
-    if (result != exports.MATCH) {
+    if (result != HmacAuth.MATCH) {
       var header = validationResult[1];
       var computed = validationResult[2];
-      throw new ValidationError(result, header, computed);
+      throw new ValidationError(signatureHeader, result, header, computed);
     }
   };
 };
