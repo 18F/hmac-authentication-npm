@@ -7,7 +7,7 @@ var crypto = require('crypto');
 var url = require('url');
 
 module.exports = HmacAuth;
-HmacAuth.ValidationError = ValidationError;
+HmacAuth.AuthenticationError = AuthenticationError;
 
 function HmacAuth(digestName, key, signatureHeader, headers) {
   this.digestName = digestName.toLowerCase();
@@ -99,8 +99,8 @@ HmacAuth.prototype.validateRequest = function(req, rawBody) {
   return [compareSignatures(header, computed), header, computed];
 };
 
-function ValidationError(signatureHeader, result, header, computed) {
-  this.name = 'ValidationError';
+function AuthenticationError(signatureHeader, result, header, computed) {
+  this.name = 'AuthenticationError';
   this.signatureHeader = signatureHeader;
   this.result = result;
   this.header = header;
@@ -111,10 +111,11 @@ function ValidationError(signatureHeader, result, header, computed) {
   if (computed) { this.message += ' computed: "' + computed + '"'; }
   this.stack = (new Error()).stack;
 }
-ValidationError.prototype = Object.create(Error.prototype);
-ValidationError.prototype.constructor = ValidationError;
+AuthenticationError.prototype = Object.create(Error.prototype);
+AuthenticationError.prototype.constructor = AuthenticationError;
 
-HmacAuth.middlewareValidator = function(secretKey, signatureHeader, headers) {
+HmacAuth.middlewareAuthenticator = function(
+  secretKey, signatureHeader, headers) {
   // Since the object is only used for validation, the digestName can be
   // anything valid. The actual digest function used during validation depends
   // on the digest name used as a prefix to the signature header.
@@ -128,7 +129,7 @@ HmacAuth.middlewareValidator = function(secretKey, signatureHeader, headers) {
     if (result != HmacAuth.MATCH) {
       var header = validationResult[1];
       var computed = validationResult[2];
-      throw new ValidationError(signatureHeader, result, header, computed);
+      throw new AuthenticationError(signatureHeader, result, header, computed);
     }
   };
 };
