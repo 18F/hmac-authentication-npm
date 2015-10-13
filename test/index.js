@@ -176,7 +176,7 @@ describe('HmacAuthentication', function() {
     });
   });
 
-  describe('validateRequest and middlewareAuthenticator', function() {
+  describe('authenticateRequest and middlewareAuthenticator', function() {
     var createRequest = function(headerSignature) {
       var httpOptions = {
         method: 'GET',
@@ -193,14 +193,14 @@ describe('HmacAuthentication', function() {
       return httpMocks.createRequest(httpOptions);
     };
 
-    var validateRequest = function(request, secretKey) {
-      var validate = HmacAuth.middlewareAuthenticator(
+    var authenticateRequest = function(request, secretKey) {
+      var authenticate = HmacAuth.middlewareAuthenticator(
         secretKey, 'Gap-Signature', HEADERS);
-      validate(request, undefined, new Buffer(0), 'utf-8');
+      authenticate(request, undefined, new Buffer(0), 'utf-8');
     };
 
     it('should throw AuthenticationError with NO_SIGNATURE', function() {
-      var f = function() { validateRequest(createRequest(), 'foobar'); };
+      var f = function() { authenticateRequest(createRequest(), 'foobar'); };
       expect(f).to.throw(HmacAuth.AuthenticationError, 'failed: NO_SIGNATURE');
     });
 
@@ -208,7 +208,7 @@ describe('HmacAuthentication', function() {
       var badValue = 'should be algorithm and digest value';
       var f = function() {
         var request = createRequest(badValue); 
-        validateRequest(request, 'foobar');
+        authenticateRequest(request, 'foobar');
       };
       expect(f).to.throw(
         HmacAuth.AuthenticationError,
@@ -223,7 +223,7 @@ describe('HmacAuthentication', function() {
       var signatureWithUnsupportedAlgorithm = 'unsupported ' + components[1];
 
       var f = function() {
-        validateRequest(
+        authenticateRequest(
           createRequest(signatureWithUnsupportedAlgorithm), 'foobar');
       };
       expect(f).to.throw(
@@ -232,15 +232,15 @@ describe('HmacAuthentication', function() {
         'header: "' + signatureWithUnsupportedAlgorithm + '"');
     });
 
-    it('should validate the request with MATCH', function() {
+    it('should authenticate the request with MATCH', function() {
       var request = createRequest();
       var expectedSignature = auth.requestSignature(request, null);
       auth.signRequest(request);
-      validateRequest(request, 'foobar');
+      authenticateRequest(request, 'foobar');
 
       // If we reach this point the result was a MATCH. Call
-      // auth.validateRequest() directly so we can inspect the values.
-      var results = auth.validateRequest(request, undefined);
+      // auth.authenticateRequest() directly so we can inspect the values.
+      var results = auth.authenticateRequest(request, undefined);
       var result = results[0];
       var header = results[1];
       var computed = results[2];
@@ -256,7 +256,7 @@ describe('HmacAuthentication', function() {
 
       var f = function() {
         auth.signRequest(request);
-        validateRequest(request, 'barbaz');
+        authenticateRequest(request, 'barbaz');
       };
       expect(f).to.throw(
         HmacAuth.AuthenticationError,
