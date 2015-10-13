@@ -1,6 +1,6 @@
 {
   "name": "hmac-authentication",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Signs and validates HTTP requests based on a shared-secret HMAC signature",
   "main": "index.js",
   "scripts": {
