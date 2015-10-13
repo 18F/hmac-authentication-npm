@@ -1,6 +1,6 @@
 # hmac-authentication npm
 
-Signs and validates HTTP requests based on a shared-secret HMAC signature.
+Signs and authenticates HTTP requests based on a shared-secret HMAC signature.
 
 Developed in parallel with the following packages for other languages:
 - Go: [github.com/18F/hmacauth](https://github.com/18F/hmacauth/)
@@ -12,7 +12,7 @@ Developed in parallel with the following packages for other languages:
 $ npm install hmac-authentication --save
 ```
 
-## Validating incoming requests
+## Authenticating incoming requests
 
 Assuming you're using [Express](https://www.npmjs.com/package/express), during
 initialization of your application, where `config.signatureHeader` identifies
@@ -28,7 +28,7 @@ var config = require('./config.json');
 
 function doLaunch(config) {
   var middlewareOptions = {
-    verify: HmacAuth.middlewareValidator(
+    verify: HmacAuth.middlewareAuthenticator(
       config.secretKey, config.signatureHeader, config.headers)
   };
   var server = express();
@@ -44,17 +44,17 @@ If you're not using Express, you can use something similar to the following:
 var HmacAuth = require('hmac-authentication');
 var config = require('./config.json');
 
-// When only used for validation, it doesn't matter what the first argument
-// is, because the hash algorithm used for validation will be parsed from the
-// incoming request signature header.
+// When only used for authentication, it doesn't matter what the first
+// argument is, because the hash algorithm used for authentication will be
+// parsed from the incoming request signature header.
 var auth = new HmacAuth(
   'sha1', config.secretKey, config.signatureHeader, config.headers);
 
 // rawBody must be a string.
 function requestHandler(req, rawBody) {
-  var validationResult = auth.validateRequest(req, rawBody);
+  var authenticationResult = auth.authenticateRequest(req, rawBody);
 
-  if (validationResult[0] != HmacAuth.MATCH) {
+  if (authenticationResult[0] != HmacAuth.MATCH) {
     // Handle authentication failure...
   }
 }

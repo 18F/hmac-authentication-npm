@@ -7,7 +7,7 @@ var crypto = require('crypto');
 var url = require('url');
 
 module.exports = HmacAuth;
-HmacAuth.ValidationError = ValidationError;
+HmacAuth.AuthenticationError = AuthenticationError;
 
 function HmacAuth(digestName, key, signatureHeader, headers) {
   this.digestName = digestName.toLowerCase();
@@ -84,7 +84,7 @@ function compareSignatures(lhs, rhs) {
   return bufferEq(lbuf, rbuf) ? HmacAuth.MATCH : HmacAuth.MISMATCH;
 }
 
-HmacAuth.prototype.validateRequest = function(req, rawBody) {
+HmacAuth.prototype.authenticateRequest = function(req, rawBody) {
   var header = this.signatureFromHeader(req);
   if (!header) { return [HmacAuth.NO_SIGNATURE]; }
   var components = header.split(' ');
@@ -99,36 +99,37 @@ HmacAuth.prototype.validateRequest = function(req, rawBody) {
   return [compareSignatures(header, computed), header, computed];
 };
 
-function ValidationError(signatureHeader, result, header, computed) {
-  this.name = 'ValidationError';
+function AuthenticationError(signatureHeader, result, header, computed) {
+  this.name = 'AuthenticationError';
   this.signatureHeader = signatureHeader;
   this.result = result;
   this.header = header;
   this.computed = computed;
-  this.message = signatureHeader + ' validation failed: ' +
+  this.message = signatureHeader + ' authentication failed: ' +
     HmacAuth.resultCodeToString(result);
   if (header) { this.message += ' header: "' + header + '"'; }
   if (computed) { this.message += ' computed: "' + computed + '"'; }
   this.stack = (new Error()).stack;
 }
-ValidationError.prototype = Object.create(Error.prototype);
-ValidationError.prototype.constructor = ValidationError;
+AuthenticationError.prototype = Object.create(Error.prototype);
+AuthenticationError.prototype.constructor = AuthenticationError;
 
-HmacAuth.middlewareValidator = function(secretKey, signatureHeader, headers) {
-  // Since the object is only used for validation, the digestName can be
-  // anything valid. The actual digest function used during validation depends
-  // on the digest name used as a prefix to the signature header.
+HmacAuth.middlewareAuthenticator = function(
+  secretKey, signatureHeader, headers) {
+  // Since the object is only used for authentication, the digestName can be
+  // anything valid. The actual digest function used during authentication
+  // depends on the digest name used as a prefix to the signature header.
   var auth = new HmacAuth('sha1', secretKey, signatureHeader, headers);
 
   return function(req, res, buf, encoding) {
     var rawBody = buf.toString(encoding);
-    var validationResult = auth.validateRequest(req, rawBody);
-    var result = validationResult[0];
+    var authenticationResult = auth.authenticateRequest(req, rawBody);
+    var result = authenticationResult[0];
 
     if (result != HmacAuth.MATCH) {
-      var header = validationResult[1];
-      var computed = validationResult[2];
-      throw new ValidationError(signatureHeader, result, header, computed);
+      var header = authenticationResult[1];
+      var computed = authenticationResult[2];
+      throw new AuthenticationError(signatureHeader, result, header, computed);
     }
   };
 };

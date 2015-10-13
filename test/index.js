@@ -176,7 +176,7 @@ describe('HmacAuthentication', function() {
     });
   });
 
-  describe('validateRequest and middlewareValidator', function() {
+  describe('authenticateRequest and middlewareAuthenticator', function() {
     var createRequest = function(headerSignature) {
       var httpOptions = {
         method: 'GET',
@@ -193,53 +193,54 @@ describe('HmacAuthentication', function() {
       return httpMocks.createRequest(httpOptions);
     };
 
-    var validateRequest = function(request, secretKey) {
-      var validate = HmacAuth.middlewareValidator(
+    var authenticateRequest = function(request, secretKey) {
+      var authenticate = HmacAuth.middlewareAuthenticator(
         secretKey, 'Gap-Signature', HEADERS);
-      validate(request, undefined, new Buffer(0), 'utf-8');
+      authenticate(request, undefined, new Buffer(0), 'utf-8');
     };
 
-    it('should throw ValidationError with NO_SIGNATURE', function() {
-      var f = function() { validateRequest(createRequest(), 'foobar'); };
-      expect(f).to.throw(HmacAuth.ValidationError, 'failed: NO_SIGNATURE');
+    it('should throw AuthenticationError with NO_SIGNATURE', function() {
+      var f = function() { authenticateRequest(createRequest(), 'foobar'); };
+      expect(f).to.throw(HmacAuth.AuthenticationError, 'failed: NO_SIGNATURE');
     });
 
-    it('should throw ValidationError with INVALID_FORMAT', function() {
+    it('should throw AuthenticationError with INVALID_FORMAT', function() {
       var badValue = 'should be algorithm and digest value';
       var f = function() {
         var request = createRequest(badValue); 
-        validateRequest(request, 'foobar');
+        authenticateRequest(request, 'foobar');
       };
       expect(f).to.throw(
-        HmacAuth.ValidationError,
+        HmacAuth.AuthenticationError,
         'failed: INVALID_FORMAT header: "' + badValue + '"');
     });
 
-    it('should throw ValidationError with UNSUPPORTED_ALGORITHM', function() {
+    it('should throw AuthenticationError with UNSUPPORTED_ALGORITHM',
+      function() {
       var request = createRequest();
       var validSignature = auth.requestSignature(request, null);
       var components = validSignature.split(' ');
       var signatureWithUnsupportedAlgorithm = 'unsupported ' + components[1];
 
       var f = function() {
-        validateRequest(
+        authenticateRequest(
           createRequest(signatureWithUnsupportedAlgorithm), 'foobar');
       };
       expect(f).to.throw(
-        HmacAuth.ValidationError,
+        HmacAuth.AuthenticationError,
         'failed: UNSUPPORTED_ALGORITHM ' +
         'header: "' + signatureWithUnsupportedAlgorithm + '"');
     });
 
-    it('should validate the request with MATCH', function() {
+    it('should authenticate the request with MATCH', function() {
       var request = createRequest();
       var expectedSignature = auth.requestSignature(request, null);
       auth.signRequest(request);
-      validateRequest(request, 'foobar');
+      authenticateRequest(request, 'foobar');
 
       // If we reach this point the result was a MATCH. Call
-      // auth.validateRequest() directly so we can inspect the values.
-      var results = auth.validateRequest(request, undefined);
+      // auth.authenticateRequest() directly so we can inspect the values.
+      var results = auth.authenticateRequest(request, undefined);
       var result = results[0];
       var header = results[1];
       var computed = results[2];
@@ -249,16 +250,16 @@ describe('HmacAuthentication', function() {
       expect(computed).to.eql(expectedSignature);
     });
 
-    it('should throw ValidationError with MISMATCH', function() {
+    it('should throw AuthenticationError with MISMATCH', function() {
       var request = createRequest();
       var barbazAuth = new HmacAuth('sha1', 'barbaz', 'Gap-Signature', HEADERS);
 
       var f = function() {
         auth.signRequest(request);
-        validateRequest(request, 'barbaz');
+        authenticateRequest(request, 'barbaz');
       };
       expect(f).to.throw(
-        HmacAuth.ValidationError,
+        HmacAuth.AuthenticationError,
         'failed: MISMATCH ' +
         'header: "' + auth.requestSignature(request, null) + '" ' +
         'computed: "' + barbazAuth.requestSignature(request, null) + '"');
